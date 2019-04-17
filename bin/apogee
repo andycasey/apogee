@@ -7,6 +7,7 @@ import argparse
 import os
 import tempfile
 from subprocess import Popen, PIPE
+from textwrap import dedent
 from astra import log
 from time import time
 
@@ -15,14 +16,14 @@ APOGEE_VERSION = os.getenv("APOGEE_VER")
 def aspcap_parameter_file_contents(args, input_dir):
     """ Return the contents of an ASPCAP parameter file, given the parsed arguments. """
 
-    assert input_dir.startswith(os.getcwd())
-    relative_input_dir = input_dir[len(os.getcwd()):]
+    #assert input_dir.startswith(os.getcwd())
+    #relative_input_dir = input_dir[len(os.getcwd()):]
     assert args.output_dir.startswith(os.getcwd())
     relative_output_dir = args.output_dir[len(os.getcwd()):]
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
-    return \
+    return dedent(
     f"""
     apogee_version  {args.apogee_version}
     apvisit    0
@@ -41,8 +42,8 @@ def aspcap_parameter_file_contents(args, input_dir):
       char field[24];
       char outfield[24];
     }} ASPCAP;
-    ASPCAP {relative_input_dir} {relative_output_dir}
-    """
+    ASPCAP {input_dir} {relative_output_dir}
+    """).strip()
 
 def aspcap_argument_string(planfile_path, args):
 
@@ -112,6 +113,9 @@ if __name__ == '__main__' :
                         help="do not produce plots.")
     parser.add_argument("--elemplot", action="store_true",
                         help="do not produce (lots of) elemental abundance plots.")
+    # TODO: Do we need the --done argument anymore?
+    parser.add_argument("--done", default=None,
+                        help="provide an executable for a callback when this process finishes.")
 
     # TODO: This is for Holt'z job management, I think, because they don't go to doaspcap.
     # TODO: Check with Holtz.
@@ -123,8 +127,6 @@ if __name__ == '__main__' :
     """
     parser.add_argument("--errbar", default=1)
     parser.add_argument("--renorm", default=0)
-    parser.add_argument("--done", default=None,
-                        help="provide an executable for a callback when this process finishes.")
     parser.add_argument("--obscont", default=0)
     parser.add_argument("--nruns", default=1)
     # TODO: provide explicit APOGEE version from this code???
@@ -159,6 +161,7 @@ if __name__ == '__main__' :
     """
 
     args = parser.parse_args()
+    log.info(f"Parsed arguments: {args}")
 
     # Read input paths.
     if args.from_file:
