@@ -184,7 +184,7 @@ if __name__ == '__main__' :
 
     # Generate a planfile.
     planfile_path = os.path.join(temp_input_dir, "plan")
-    contents = aspcap_parameter_file_contents(args)
+    contents = aspcap_parameter_file_contents(args, temp_input_dir)
     with open(planfile_path, "w") as fp:
         fp.write(contents)
     log.info(f"Created plan file at {planfile_path} with contents:\n{contents}")
