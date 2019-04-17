@@ -13,8 +13,8 @@ from time import time
 
 APOGEE_VERSION = os.getenv("APOGEE_VER")
 
-def _decode_if_needed(output):
-    return output.decode() if isinstance(output, bytes) else output
+
+_safe_encoding = lambda s: s.decode("utf-8").encode("utf-8")
 
 
 def aspcap_parameter_file_contents(args, input_dir):
@@ -183,12 +183,18 @@ if __name__ == '__main__' :
     # absolute input paths.
     temp_input_dir = tempfile.mkdtemp()
     log.info("Created temporary input directory {0}".format(temp_input_dir))
+
+    # TODO: Don't create symbolic links until we can directly run DOASPCAP
+    """
     for source in map(os.path.abspath, input_paths):
         destination = os.path.join(temp_input_dir, os.path.basename(source))
 
         os.symlink(source, destination)
         log.info("Created symbolic link {0} -> {1}".format(source, destination))
+    """
 
+    # TODO: Don't create output directory until we can directly run DOASPCAP
+    """
     # Create output directory if needed.
     args.output_dir = os.path.abspath(os.path.realpath(args.output_dir))
     try:
@@ -199,7 +205,8 @@ if __name__ == '__main__' :
 
     else:
         log.info("Created output directory {0}".format(args.output_dir))
-
+    """
+    
     # Generate a planfile.
     planfile_path = os.path.join(temp_input_dir, "plan")
     contents = aspcap_parameter_file_contents(args, temp_input_dir)
@@ -227,8 +234,10 @@ if __name__ == '__main__' :
     stdout, stderr = process.communicate()
 
     log.info("Process complete after {0:.0f} seconds".format(time() - t))
-    log.info("Standard output:\n{0}".format(_decode_if_needed(stdout)))
-    log.info("Standard error:\n{0}".format(_decode_if_needed(stderr)))
+    log.info("Standard output:")
+    log.info(_safe_encoding(stdout))
+    log.info("Standard output:")
+    log.info(_safe_encoding(stderr))
 
     # Callback?
     if args.done is not None:
@@ -243,8 +252,11 @@ if __name__ == '__main__' :
 
         finally:
             cb_stdout, cb_stderr = callback.communicate()
-            log.info("Callback stdout: {0}".format(_decode_if_needed(cb_stdout)))
-            log.info("Callback stderr: {0}".format(_decode_if_needed(cb_stderr)))
+
+            log.info("Callback standard output:")
+            log.info(_safe_encoding(cb_stdout))
+            log.info("Callback standard error:")
+            log.info(_safe_encoding(cb_stderr))
 
 
         # TODO: figure out what this is from Holtz, since we are removing something,...
@@ -253,6 +265,5 @@ if __name__ == '__main__' :
         #    except: pass
 
     # Clean up temporary input directory?
-    raise a
 
 
