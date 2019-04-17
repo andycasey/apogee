@@ -23,27 +23,26 @@ def aspcap_parameter_file_contents(args, input_dir):
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
-    return dedent(
-    f"""
-    apogee_version  {args.apogee_version}
-    apvisit    0
-    apred_vers '{args.apred_version}'
-    telescope '{args.telescope}'
-    instrument '{args.instrument}'
-    apstar_vers '{args.apstar_version}'
-    aspcap_vers '{args.aspcap_version}'
-    aspcap_config '{args.aspcap_config}'
-    ncpus             {args.ncpus}
-    queue              {args.queue}
-    qname       '{args.qname}'
-    qgroup      '{args.qgroup}'
-    caldir       '{args.caldir}'
-    typedef struct {{
-      char field[24];
-      char outfield[24];
-    }} ASPCAP;
-    ASPCAP {input_dir} {relative_output_dir}
-    """).strip()
+    return dedent(f"""
+                   apogee_version  {args.apogee_version}
+                   apvisit    0
+                   apred_vers '{args.apred_version}'
+                   telescope '{args.telescope}'
+                   instrument '{args.instrument}'
+                   apstar_vers '{args.apstar_version}'
+                   aspcap_vers '{args.aspcap_version}'
+                   aspcap_config '{args.aspcap_config}'
+                   ncpus             {args.ncpus: >2.0f}
+                   queue              {args.queue}
+                   qname       '{args.qname}'
+                   qgroup      '{args.qgroup}'
+                   caldir       '{args.caldir}'
+                   typedef struct {{
+                     char field[24];
+                     char outfield[24];
+                   }} ASPCAP;
+                   ASPCAP {input_dir} {relative_output_dir}
+                   """).strip()
 
 def aspcap_argument_string(planfile_path, args):
 
