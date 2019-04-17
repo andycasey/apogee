@@ -5,20 +5,20 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import argparse
 import os
-import sys
-import subprocess
-import pdb
 import tempfile
 from subprocess import Popen, PIPE
-
-
 from astra import log
+from time import time
 
 APOGEE_VERSION = os.getenv("APOGEE_VER")
 
-
-def aspcap_parameter_file_contents(args):
+def aspcap_parameter_file_contents(args, input_dir):
     """ Return the contents of an ASPCAP parameter file, given the parsed arguments. """
+
+    assert input_dir.startswith(os.getcwd())
+    relative_input_dir = input_dir[len(os.getcwd()):]
+    assert args.output_dir.startswith(os.getcwd())
+    relative_output_dir = args.output_dir[len(os.getcwd()):]
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
@@ -41,7 +41,7 @@ def aspcap_parameter_file_contents(args):
       char field[24];
       char outfield[24];
     }} ASPCAP;
-    ASPCAP apo25m/120-75 apo25m/120-75
+    ASPCAP {relative_input_dir} {relative_output_dir}
     """
 
 def aspcap_argument_string(planfile_path, args):
@@ -72,44 +72,59 @@ if __name__ == '__main__' :
     parser.add_argument("output_dir",
                         help="directory for analysis outputs")
 
-
-    parser.add_argument("--flag", default="11111")
+    # TODO: help strings.
+    parser.add_argument("--flag", default="11111",
+                        help="a bit flag passed to ASPCAP to instruct it what to do [TODO docs] (default: 11111)")
 
     parser.add_argument("--apogee-version", default="unknown",
-                        help="the APOGEE version used to analyze these data products")
-    parser.add_argument("--apred-version", default="unknown")
-    parser.add_argument("--apstar-version",  default="unknown")
-    parser.add_argument("--aspcap-config",  default="unknown")
-    parser.add_argument("--telescope", default="apo25m")
-    parser.add_argument("--instrument", default="apogee-n")
-    parser.add_argument("--apvisit", default=0)
+                        help="the APOGEE version used to analyze these data products (default: unknown)")
+    parser.add_argument("--apred-version", default="unknown",
+                        help="the reduction version of the data products (default: unknown)")
+    parser.add_argument("--apstar-version",  default="unknown",
+                        help="the apStar version of the data products (default: unknown)")
+    parser.add_argument("--aspcap-version", default="unknown",
+                        help="the version of ASPCAP used for these data products (default: unknown)")
+    parser.add_argument("--aspcap-config",  default="unknown",
+                        help="the ASPCAP configuration to use for these data products (default: unknown)")
+    parser.add_argument("--telescope", default="apo25m",
+                        help="the telescope these data were acquired from (default: apo25m)")
+    parser.add_argument("--instrument", default="apogee-n",
+                        help="the instrument used to acquire these data (default: apogee-n)")
+    parser.add_argument("--apvisit", default=0,
+                        help="the apVisit number for these data (default: 0)")
 
     # These arguments are optional arguments for the doaspcap.pro file.
-    parser.add_argument("--ncpus", default=4)
+    parser.add_argument("--ncpus", default=4,
+                        help="the nubmer of CPUs available for use (default: 4)")
     parser.add_argument("--queue", default=0)
-    parser.add_argument("--qname", default="apogee")
-    parser.add_argument("--qgroup", default="apogee")
-    parser.add_argument("--caldir", default=0)
+    parser.add_argument("--qname", default="apogee",
+                        help="TODO docs qname (default: apogee)")
+    parser.add_argument("--qgroup", default="apogee",
+                        help="TODO docs qgroup (default: apogee)")
+    parser.add_argument("--caldir", default=0,
+                        help="the path of the calibration directory")
 
-    # This is for job management, I think, because they don't go to doaspcap.
-    # TODO: check with Holtz.
-    #parser.add_argument("--host")
-
-    # These are options that go to doaspcap.pro
-    # TODO: For now these will be ignored.
-    """
-    parser.add_argument("--errbar", default=1)
-    parser.add_argument("--renorm", default=0)
-    parser.add_argument("--done", default=None,
-                        help="provide an executable for a callback when this process finishes.")
     parser.add_argument("--clobber", action="store_true",
-                        help="overwrite existing output files.")
+                        help="overwrite existing output files")
     parser.add_argument("--noelem", action="store_true",
                         help="do not calculate elemental abundances.")
     parser.add_argument("--noplot", action="store_true",
                         help="do not produce plots.")
     parser.add_argument("--elemplot", action="store_true",
                         help="do not produce (lots of) elemental abundance plots.")
+
+    # TODO: This is for Holt'z job management, I think, because they don't go to doaspcap.
+    # TODO: Check with Holtz.
+    #parser.add_argument("--host")
+
+    # These are additional options that go to doaspcap.pro
+    # TODO: A lot of work (and expert domain knowledge) is needed in order to 
+    #       properly document all of these options.
+    """
+    parser.add_argument("--errbar", default=1)
+    parser.add_argument("--renorm", default=0)
+    parser.add_argument("--done", default=None,
+                        help="provide an executable for a callback when this process finishes.")
     parser.add_argument("--obscont", default=0)
     parser.add_argument("--nruns", default=1)
     # TODO: provide explicit APOGEE version from this code???
@@ -126,20 +141,12 @@ if __name__ == '__main__' :
     parser.add_argument("--highbad", default=1.1)
     parser.add_argument("--lowbad", default=0.001)
     parser.add_argument("--higherr", default=1.e10)
-
-    # TODO: this should be True/False to be pythonic, but IDL wants 0
     parser.add_argument("--commiss", action="store_true", default=False)
-     # TODO: this should be True/False to be pythonic, but IDL wants 0
     parser.add_argument("--nored", action="store_true", default=False) 
     parser.add_argument("--minerr", default=0.005)
-     # TODO: this should be True/False to be pythonic, but IDL wants 0
     parser.add_argument("--vacuum", action="store_true", default=False)
     parser.add_argument("--symlink", action="store_true", default=False)
-     # TODO this should be True/False to be pythonic, but IDL wants 0
-
     parser.add_argument("--nstars", default=0) 
-
-    # TODO this should be True/False to be pythonic, but IDL wants 0
     parser.add_argument("--starlist", default=0)
     parser.add_argument("--qaspcap", default=False, action="store_true")
     parser.add_argument("--doelemplot", default=0)
@@ -152,32 +159,6 @@ if __name__ == '__main__' :
     """
 
     args = parser.parse_args()
-
-    #TODO if renorm then frdsuffix = .obs else .frd
-    #TODO if n_elements(queue) == 0 then parser.add_argument("--queue", default=0)
-
-    # TODO: update libr_path
-    # TODO: fix up altmaskdir wrt APOGEE_DIR
-    # if tag_exist(planstr,"fits") then fits=planstr.fits
-    # TODO: implement this overwriting for qaspcap
-    # TODO: update so aspcap-root defaults to dir.aspcap if not given
-    # TODO: update redux-root so it defaults to dirs.redux
-    # TODO: update liblist-path
-
-    # TODO: n_elements things
-    """
-    if n_elements(persist) eq 0 then persist=apsetpar(planstr,'persist',0)
-    if n_elements(skyerr) eq 0 then skyerr=apsetpar(planstr,'skyerr',3)
-    if n_elements(skyfact) eq 0 then skyfact=apsetpar(planstr,'skyfact',1000.)
-    if n_elements(visits) eq 0 then visits=apsetpar(planstr,'visits',0)
-    if n_elements(npar) eq 0 then npar=apsetpar(planstr,'npar',7)
-    if n_elements(nelem) eq 0 then nelem=apsetpar(planstr,'nelem',0)
-    if n_elements(notie) eq 0 then notie=apsetpar(planstr,'notie',0)
-    # if n_elements(clobber) eq 0 then clobber=apsetpar(planstr,'clobber',0)
-    #if n_elements(noplot) eq 0 then noplot=apsetpar(planstr,'noplot',0)
-    # if n_elements(noelem) eq 0 then noelem=apsetpar(planstr,'noelem',0)
-    """
-    raise a
 
     # Read input paths.
     if args.from_file:
@@ -202,7 +183,7 @@ if __name__ == '__main__' :
     log.info(f"Created output directory {args.output_dir}")
 
     # Generate a planfile.
-    planfile_path = tempfile.mkstemp(dir=temp_input_dir, suffix=".plan")
+    planfile_path = os.path.join(temp_input_dir, "plan")
     contents = aspcap_parameter_file_contents(args)
     with open(planfile_path, "w") as fp:
         fp.write(contents)
@@ -210,12 +191,17 @@ if __name__ == '__main__' :
 
     # Construct command line arguments.
     argument_string = aspcap_argument_string(planfile_path, args)
-    commands = ["idl", "-e", "aspcaprun,{argument_string}"]
+    commands = ["idl", "-e", f"aspcaprun,{argument_string}"]
     log.info(f"Executing: {' '.join(commands)}")
 
     # Execute!
+    t = time()
     process = Popen(commands, stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate()
+
+    log.info(f"Process complete after {time() - t:.0f} seconds")
+    log.info(f"Standard output:\n{stdout.decode()}")
+    log.info(f"Standard error:\n{stderr.decode()}")
 
     # Callback?
     if args.done is not None:
@@ -230,8 +216,8 @@ if __name__ == '__main__' :
 
         finally:
             cb_stdout, cb_stderr = callback.communicate()
-            log.info(f"Callback stdout: {cb_stdout}")
-            log.info(f"Callback stderr: {cb_stderr}")
+            log.info(f"Callback stdout: {cb_stdout.decode()}")
+            log.info(f"Callback stderr: {cb_stderr.decode()}")
 
 
         # TODO: figure out what this is from Holtz, since we are removing something,...
