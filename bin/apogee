@@ -183,18 +183,12 @@ if __name__ == '__main__' :
     # absolute input paths.
     temp_input_dir = tempfile.mkdtemp()
     log.info("Created temporary input directory {0}".format(temp_input_dir))
-
-    # TODO: Don't create symbolic links until we can directly run DOASPCAP
-    """
     for source in map(os.path.abspath, input_paths):
         destination = os.path.join(temp_input_dir, os.path.basename(source))
 
         os.symlink(source, destination)
         log.info("Created symbolic link {0} -> {1}".format(source, destination))
-    """
 
-    # TODO: Don't create output directory until we can directly run DOASPCAP
-    """
     # Create output directory if needed.
     args.output_dir = os.path.abspath(os.path.realpath(args.output_dir))
     try:
@@ -205,8 +199,7 @@ if __name__ == '__main__' :
 
     else:
         log.info("Created output directory {0}".format(args.output_dir))
-    """
-    
+
     # Generate a planfile.
     planfile_path = os.path.join(temp_input_dir, "plan")
     contents = aspcap_parameter_file_contents(args, temp_input_dir)
@@ -257,7 +250,7 @@ if __name__ == '__main__' :
             log.info(_safe_encoding(cb_stdout))
             log.info("Callback standard error:")
             log.info(_safe_encoding(cb_stderr))
-
+            
 
         # TODO: figure out what this is from Holtz, since we are removing something,...
         #if args.host is not None :
@@ -265,5 +258,6 @@ if __name__ == '__main__' :
         #    except: pass
 
     # Clean up temporary input directory?
+    raise a
 
 
