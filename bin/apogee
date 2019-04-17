@@ -18,8 +18,9 @@ def aspcap_parameter_file_contents(args, input_dir):
 
     #assert input_dir.startswith(os.getcwd())
     #relative_input_dir = input_dir[len(os.getcwd()):]
-    assert args.output_dir.startswith(os.getcwd())
-    relative_output_dir = args.output_dir[len(os.getcwd()):]
+    cwd = "{}/".format(os.getcwd())
+    assert args.output_dir.startswith(cwd)
+    relative_output_dir = args.output_dir[len(cwd):]
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
