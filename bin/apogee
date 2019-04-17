@@ -23,26 +23,29 @@ def aspcap_parameter_file_contents(args, input_dir):
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
-    return dedent(f"""
-                   apogee_version  {args.apogee_version}
-                   apvisit    0
-                   apred_vers '{args.apred_version}'
-                   telescope '{args.telescope}'
-                   instrument '{args.instrument}'
-                   apstar_vers '{args.apstar_version}'
-                   aspcap_vers '{args.aspcap_version}'
-                   aspcap_config '{args.aspcap_config}'
-                   ncpus             {args.ncpus: >2.0f}
-                   queue              {args.queue}
-                   qname       '{args.qname}'
-                   qgroup      '{args.qgroup}'
-                   caldir       '{args.caldir}'
-                   typedef struct {{
-                     char field[24];
-                     char outfield[24];
-                   }} ASPCAP;
-                   ASPCAP {input_dir} {relative_output_dir}
-                   """).strip()
+    kwds = dict(input_dir=input_dir, output_dir=relative_output_dir)
+    kwds.update(args.__dict__)
+    return dedent("""
+                  apogee_version  {apogee_version}
+                  apvisit    0
+                  apred_vers '{apred_version}'
+                  telescope '{telescope}'
+                  instrument '{instrument}'
+                  apstar_vers '{apstar_version}'
+                  aspcap_vers '{aspcap_version}'
+                  aspcap_config '{aspcap_config}'
+                  ncpus             {ncpus: >2.0f}
+                  queue              {queue}
+                  qname       '{qname}'
+                  qgroup      '{qgroup}'
+                  caldir       '{caldir}'
+                  typedef struct {{
+                    char field[24];
+                    char outfield[24];
+                  }} ASPCAP;
+                  ASPCAP {input_dir} {output_dir}
+                  """.format(**kwds)).strip()
+
 
 def aspcap_argument_string(planfile_path, args):
 
@@ -51,7 +54,7 @@ def aspcap_argument_string(planfile_path, args):
     if args.noplot: aspcap_arguments += ["/noplot"]
     if args.elemplot: aspcap_arguments += ["/elemplot"]
 
-    return ",".join([f"'{each}'" for each in aspcap_arguments])
+    return ",".join(["'{0}'".format(each) for each in aspcap_arguments])
 
 
 
@@ -160,7 +163,7 @@ if __name__ == '__main__' :
     """
 
     args = parser.parse_args()
-    log.info(f"Parsed arguments: {args}")
+    log.info("Parsed arguments: {0}".format(args))
 
     # Read input paths.
     if args.from_file:
@@ -172,38 +175,38 @@ if __name__ == '__main__' :
     # Create a temporary input directory and create symbolic links to the
     # absolute input paths.
     temp_input_dir = tempfile.mkdtemp()
-    log.info(f"Created temporary input directory {temp_input_dir}")
+    log.info("Created temporary input directory {0}".format(temp_input_dir))
     for source in map(os.path.abspath, input_paths):
         destination = os.path.join(temp_input_dir, os.path.basename(source))
 
         os.symlink(source, destination)
-        log.info(f"Created symbolic link {source} -> {destination}")
+        log.info("Created symbolic link {0} -> {1}".format(source, destination))
 
     # Create output directory if needed.
     args.output_dir = os.path.abspath(os.path.realpath(args.output_dir))
     os.makedirs(args.output_dir, exist_ok=True)
-    log.info(f"Created output directory {args.output_dir}")
+    log.info("Created output directory {0}".format(args.output_dir))
 
     # Generate a planfile.
     planfile_path = os.path.join(temp_input_dir, "plan")
     contents = aspcap_parameter_file_contents(args, temp_input_dir)
     with open(planfile_path, "w") as fp:
         fp.write(contents)
-    log.info(f"Created plan file at {planfile_path} with contents:\n{contents}")
+    log.info("Created plan file at {0} with contents:\n{1}".format(planfile_path, contents))
 
     # Construct command line arguments.
-    argument_string = aspcap_argument_string(planfile_path, args)
-    commands = ["idl", "-e", f"aspcaprun,{argument_string}"]
-    log.info(f"Executing: {' '.join(commands)}")
+    idl_args = ",".join(["aspcaprun", aspcap_argument_string(planfile_path, args)])
+    commands = ["idl", "-e", idl_args]
+    log.info("Executing: {0}".format(" ".join(commands)))
 
     # Execute!
     t = time()
     process = Popen(commands, stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate()
 
-    log.info(f"Process complete after {time() - t:.0f} seconds")
-    log.info(f"Standard output:\n{stdout.decode()}")
-    log.info(f"Standard error:\n{stderr.decode()}")
+    log.info("Process complete after {0:.0f} seconds".format(time() - t))
+    log.info("Standard output:\n{0}".format(stdout.decode()))
+    log.info("Standard error:\n{0}".format(stderr.decode()))
 
     # Callback?
     if args.done is not None:
@@ -218,8 +221,8 @@ if __name__ == '__main__' :
 
         finally:
             cb_stdout, cb_stderr = callback.communicate()
-            log.info(f"Callback stdout: {cb_stdout.decode()}")
-            log.info(f"Callback stderr: {cb_stderr.decode()}")
+            log.info("Callback stdout: {0}".format(cb_stdout.decode()))
+            log.info("Callback stderr: {0}".format(cb_stderr.decode()))
 
 
         # TODO: figure out what this is from Holtz, since we are removing something,...
