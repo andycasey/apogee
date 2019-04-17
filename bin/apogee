@@ -13,6 +13,10 @@ from time import time
 
 APOGEE_VERSION = os.getenv("APOGEE_VER")
 
+def _decode_if_needed(output):
+    return output.decode() if isinstance(output, bytes) else output
+
+
 def aspcap_parameter_file_contents(args, input_dir):
     """ Return the contents of an ASPCAP parameter file, given the parsed arguments. """
 
@@ -24,7 +28,7 @@ def aspcap_parameter_file_contents(args, input_dir):
 
     # TODO: Which arguments should be put into a parameter file, and which
     #       should be put to the command line arguments for aspcaprun?
-    kwds = dict(input_dir=input_dir, output_dir=relative_output_dir)
+    kwds = dict(input_dir=input_dir, relative_output_dir=relative_output_dir)
     kwds.update(args.__dict__)
     return dedent("""
                   apogee_version  {apogee_version}
@@ -44,18 +48,20 @@ def aspcap_parameter_file_contents(args, input_dir):
                     char field[24];
                     char outfield[24];
                   }} ASPCAP;
-                  ASPCAP {input_dir} {output_dir}
+                  ASPCAP {input_dir} {relative_output_dir}
                   """.format(**kwds)).strip()
 
 
 def aspcap_argument_string(planfile_path, args):
 
     aspcap_arguments = [planfile_path, args.flag, int(args.clobber)]
-    if args.noelem: aspcap_arguments += ["/noelem"]
-    if args.noplot: aspcap_arguments += ["/noplot"]
-    if args.elemplot: aspcap_arguments += ["/elemplot"]
+    aspcap_arguments = ",".join(["'{0}'".format(ea) for ea in aspcap_arguments])
 
-    return ",".join(["'{0}'".format(each) for each in aspcap_arguments])
+    if args.noelem: aspcap_arguments += ",/noelem"
+    if args.noplot: aspcap_arguments += ",/noplot"
+    if args.elemplot: aspcap_arguments += ",/elemplot"
+
+    return aspcap_arguments
 
 
 
@@ -202,8 +208,17 @@ if __name__ == '__main__' :
     log.info("Created plan file at {0} with contents:\n{1}".format(planfile_path, contents))
 
     # Construct command line arguments.
+    """
+    # Trying to directly run "aspcaprun" fails spectacularly.
+    # This happened even if I set the CWD for the subprocess.
+    # For now let's use Holtz's "runplans".
+    # TODO: Figure out wtf is going on when running aspcaprun as is
     idl_args = ",".join(["aspcaprun", aspcap_argument_string(planfile_path, args)])
     commands = ["idl", "-e", idl_args]
+    log.info("Executing: {0}".format(" ".join(commands)))
+    """
+
+    commands = ["runplans", planfile_path]
     log.info("Executing: {0}".format(" ".join(commands)))
 
     # Execute!
@@ -212,8 +227,8 @@ if __name__ == '__main__' :
     stdout, stderr = process.communicate()
 
     log.info("Process complete after {0:.0f} seconds".format(time() - t))
-    log.info("Standard output:\n{0}".format(stdout.decode()))
-    log.info("Standard error:\n{0}".format(stderr.decode()))
+    log.info("Standard output:\n{0}".format(_decode_if_needed(stdout)))
+    log.info("Standard error:\n{0}".format(_decode_if_needed(stderr)))
 
     # Callback?
     if args.done is not None:
@@ -228,8 +243,8 @@ if __name__ == '__main__' :
 
         finally:
             cb_stdout, cb_stderr = callback.communicate()
-            log.info("Callback stdout: {0}".format(cb_stdout.decode()))
-            log.info("Callback stderr: {0}".format(cb_stderr.decode()))
+            log.info("Callback stdout: {0}".format(_decode_if_needed(cb_stdout)))
+            log.info("Callback stderr: {0}".format(_decode_if_needed(cb_stderr)))
 
 
         # TODO: figure out what this is from Holtz, since we are removing something,...
